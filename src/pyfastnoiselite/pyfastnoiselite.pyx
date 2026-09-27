@@ -5,9 +5,11 @@ Provides the wrapped FastNoiseLite C++ class for use in Python.
 """
 
 from enum import Enum
+from importlib.metadata import PackageNotFoundError, version as _dist_version
 
 import numpy as np
 
+cimport cython
 from cython.operator cimport dereference as deref
 from libcpp.memory cimport unique_ptr
 
@@ -21,7 +23,11 @@ from .cppfastnoiselite cimport FastNoiseLitePy as _FNL
 
 __author__ = 'Tiziano Bettio'
 __license__ = 'MIT'
-__version__ = '0.0.7'
+try:
+    __version__ = _dist_version('pyfastnoiselite-ledfx')
+except PackageNotFoundError:
+    # Frozen apps (PyInstaller) don't ship package metadata unless told to
+    __version__ = 'unknown'
 __copyright__ = """Copyright (c) 2021 Tiziano Bettio
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -93,6 +99,11 @@ class DomainWarpType(Enum):
     DomainWarpType_BasicGrid = 2
 
 
+# Batches smaller than this keep the GIL (roughly 10-100 us of work).
+cdef enum:
+    _NOGIL_MIN_COORDS = 1024
+
+
 cdef class FastNoiseLite:
     cdef unique_ptr[_FNL] thisptr
     cdef int _seed
@@ -161,7 +172,7 @@ cdef class FastNoiseLite:
 
     @noise_type.setter
     def noise_type(self, noise_type):
-        self._set_noise_type(noise_type.value)
+        self._set_noise_type(NoiseType(noise_type).value)
 
     cdef void _set_noise_type(self, int noise_type):
         self._noise_type = noise_type
@@ -173,7 +184,7 @@ cdef class FastNoiseLite:
 
     @rotation_type_3d.setter
     def rotation_type_3d(self, rotation_type_3d):
-        self._set_rotation_type_3d(rotation_type_3d.value)
+        self._set_rotation_type_3d(RotationType3D(rotation_type_3d).value)
 
     cdef void _set_rotation_type_3d(self, int rotation_type_3d):
         self._rotation_type_3d = rotation_type_3d
@@ -185,7 +196,7 @@ cdef class FastNoiseLite:
 
     @fractal_type.setter
     def fractal_type(self, fractal_type):
-        self._set_fractal_type(fractal_type.value)
+        self._set_fractal_type(FractalType(fractal_type).value)
 
     cdef void _set_fractal_type(self, int fractal_type):
         self._fractal_type = fractal_type
@@ -257,7 +268,7 @@ cdef class FastNoiseLite:
 
     @cellular_distance_function.setter
     def cellular_distance_function(self, func):
-        self._set_cellular_distance_function(func.value)
+        self._set_cellular_distance_function(CellularDistanceFunction(func).value)
 
     cdef void _set_cellular_distance_function(self, int func):
         self._cellular_distance_function = func
@@ -269,7 +280,7 @@ cdef class FastNoiseLite:
 
     @cellular_return_type.setter
     def cellular_return_type(self, return_type):
-        self._set_cellular_return_type(return_type.value)
+        self._set_cellular_return_type(CellularReturnType(return_type).value)
 
     cdef void _set_cellular_return_type(self, int return_type):
         self._cellular_return_type = return_type
@@ -293,7 +304,7 @@ cdef class FastNoiseLite:
 
     @domain_warp_type.setter
     def domain_warp_type(self, warp_type):
-        self._set_domain_warp_type(warp_type.value)
+        self._set_domain_warp_type(DomainWarpType(warp_type).value)
 
     cdef void _set_domain_warp_type(self, int warp_type):
         self._domain_warp_type = warp_type
@@ -326,23 +337,43 @@ cdef class FastNoiseLite:
     #    void DomainWarp(float, float)
     #    void DomainWarp(float, float, float)
 
-    def gen_from_coords(self, float[:, :] coords):
-        return self._gen_from_coords(coords)
+    def gen_from_coords(self, const float[:, :] coords):
+        """Noise for each column of a float32 array of shape (2, N) or (3, N).
 
-    cdef _gen_from_coords(self, float[:, :] coords):
+        Returns a float32 array of shape (N,). The GIL is released while
+        generating large batches, so separate instances can run in parallel
+        threads. Don't change settings on an instance from another thread
+        while it is generating.
+        """
         cdef Py_ssize_t num_components = coords.shape[0]
         cdef Py_ssize_t num_coords = coords.shape[1]
+        if num_components != 2 and num_components != 3:
+            raise ValueError(
+                f"coords must have shape (2, N) or (3, N), got "
+                f"({num_components}, {num_coords})"
+            )
 
-        assert num_components in (2, 3)
-
-        result = np.zeros((num_coords, ), dtype=np.float32)
-        cdef float[:] result_view = result
-
-        cdef Py_ssize_t c
-        if num_components == 2:
-            for c in range(num_coords):
-                result_view[c] = deref(self.thisptr).GetNoise(coords[0, c], coords[1, c])
+        result = np.empty(num_coords, dtype=np.float32)
+        cdef float[::1] out = result
+        cdef _FNL* fnl = self.thisptr.get()
+        # Releasing the GIL costs a re-acquire that can wait on other threads,
+        # so only do it when there is enough work to be worth it.
+        if num_coords >= _NOGIL_MIN_COORDS:
+            with nogil:
+                _fill(fnl, coords, out)
         else:
-            for c in range(num_coords):
-                result_view[c] = deref(self.thisptr).GetNoise(coords[0, c], coords[1, c], coords[2, c])
+            _fill(fnl, coords, out)
         return result
+
+
+# Callers guarantee coords has 2 or 3 rows and out has coords.shape[1] items.
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef void _fill(_FNL* fnl, const float[:, :] coords, float[::1] out) noexcept nogil:
+    cdef Py_ssize_t c
+    if coords.shape[0] == 2:
+        for c in range(coords.shape[1]):
+            out[c] = fnl.GetNoise(coords[0, c], coords[1, c])
+    else:
+        for c in range(coords.shape[1]):
+            out[c] = fnl.GetNoise(coords[0, c], coords[1, c], coords[2, c])

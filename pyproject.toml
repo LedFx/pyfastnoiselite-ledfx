@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Cython wrapper for Auburn's FastNoise Lite noise library, with stable-ABI wheels (LedFx fork of pyfastnoiselite)"
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "ext/FastNoise/LICENSE"]
 authors = [
     { name = "LedFx" },
     { name = "Tiziano Bettio", email = "tc@tizilogic.com" },

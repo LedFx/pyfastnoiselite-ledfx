@@ -9,3 +9,5 @@ wheelhouse
 .venv
 .vscode
 src/pyfastnoiselite/*.cpp
+__pycache__/
+.pytest_cache/

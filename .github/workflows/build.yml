@@ -78,6 +78,12 @@ jobs:
           submodules: true
           fetch-depth: 0 # setuptools-scm needs tags for the version
 
+      # Anyone with write access can push a tag, and a tag can point at a
+      # commit that never went through a reviewed PR. Only publish from main.
+      - name: Check the release tag is on main
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
       - name: Install uv
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:

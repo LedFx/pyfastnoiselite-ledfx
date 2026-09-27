@@ -9,12 +9,14 @@ from setuptools import Extension, setup
 # typed memoryviews need. Free-threaded builds have no stable ABI.
 LIMITED_API = not sysconfig.get_config_var("Py_GIL_DISABLED")
 
+# -g0 drops the debug info that CPython's default CFLAGS add: the wheel is
+# about 4x smaller and the code is the same.
 if platform.system() == "Windows":
     CXX_ARGS = []
 elif platform.system() == "Darwin":
-    CXX_ARGS = ["-std=c++11", "-stdlib=libc++"]
+    CXX_ARGS = ["-std=c++11", "-stdlib=libc++", "-g0"]
 else:
-    CXX_ARGS = ["-std=c++11"]
+    CXX_ARGS = ["-std=c++11", "-g0"]
 
 extension = Extension(
     "pyfastnoiselite.pyfastnoiselite",
