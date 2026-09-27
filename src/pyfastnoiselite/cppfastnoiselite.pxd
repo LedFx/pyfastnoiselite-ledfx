@@ -90,7 +90,7 @@ cdef extern from 'Cpp/FastNoiseLite.h':
         void DomainWarp(float, float, float)
 
 
-cdef extern from 'FastNoiseLitePy.h':
+cdef extern from 'FastNoiseLitePy.h' nogil:
     cdef cppclass FastNoiseLitePy:
         FastNoiseLitePy() except +
         void SetSeed(int)

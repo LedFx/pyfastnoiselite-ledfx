@@ -56,7 +56,9 @@ coords = np.array([Xs, Ys, Zs], dtype=np.float32)
 print(noise.gen_from_coords(coords))
 ```
 
-For many points, `gen_from_coords` is much faster than calling `get_noise` in a Python loop. It takes a `float32` array of shape `(2, N)` or `(3, N)`.
+For many points, `gen_from_coords` is much faster than calling `get_noise` in a Python loop. It takes a `float32` array of shape `(2, N)` or `(3, N)` (read-only arrays and views are fine) and returns a `float32` array of shape `(N,)`.
+
+For batches of 1024 points or more, `gen_from_coords` releases the GIL, so separate `FastNoiseLite` instances can generate in parallel threads. Don't change an instance's settings from another thread while it is generating.
 
 ## License
 
