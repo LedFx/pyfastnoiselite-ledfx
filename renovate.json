@@ -1,0 +1,41 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>LedFx/renovate-config"
+  ],
+  "git-submodules": {
+    "enabled": true
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Last-reviewed upstream fork commit. A bump PR means upstream moved: review it (see MAINTAINING.md).",
+      "managerFilePatterns": [
+        "/^MAINTAINING\\.md$/"
+      ],
+      "matchStrings": [
+        "upstream: (?<packageName>https://github\\.com/\\S+) (?<currentValue>\\S+)@(?<currentDigest>[0-9a-f]{40})"
+      ],
+      "depNameTemplate": "upstream pyfastnoiselite",
+      "datasourceTemplate": "git-refs"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "FastNoiseLite changes the compiled wheel and can change the noise LedFx effects render; the golden-value tests show whether it did. A person reads these, as with upstream bumps that need porting.",
+      "matchManagers": [
+        "git-submodules",
+        "custom.regex"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "Git commits carry no release timestamp; the preset's release-age wait would hold these forever.",
+      "matchManagers": [
+        "git-submodules",
+        "custom.regex"
+      ],
+      "minimumReleaseAge": null
+    }
+  ]
+}

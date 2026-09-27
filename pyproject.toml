@@ -1,11 +1,61 @@
 [build-system]
-requires = ["setuptools>=70.1", "cython>=3.1"]
+requires = ["setuptools>=80", "setuptools-scm>=8", "cython>=3.1"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyfastnoiselite-ledfx"
+dynamic = ["version"]
+description = "Cython wrapper for Auburn's FastNoise Lite noise library, with stable-ABI wheels (LedFx fork of pyfastnoiselite)"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "LedFx" },
+    { name = "Tiziano Bettio", email = "tc@tizilogic.com" },
+]
+requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Cython",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics",
+]
+keywords = ["noise", "simplex", "perlin", "procedural", "fastnoise"]
+dependencies = [
+    "numpy>=1.23.2", # first release with CPython 3.11 wheels; tested in CI
+]
+
+[project.urls]
+Homepage = "https://github.com/LedFx/pyfastnoiselite-ledfx"
+Source = "https://github.com/LedFx/pyfastnoiselite-ledfx"
+Issues = "https://github.com/LedFx/pyfastnoiselite-ledfx/issues"
+Upstream = "https://github.com/tizilogic/PyFastNoiseLite"
+
+[dependency-groups]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
 
 [tool.cibuildwheel]
 build-frontend = "build[uv]"
-skip = ["pp*", "cp3??t-*", "*-win32", "*-manylinux_i686", "*-musllinux_i686"]
-test-requires = ["numpy"]
-test-command = "python -c \"from pyfastnoiselite.pyfastnoiselite import FastNoiseLite; import numpy as np; assert FastNoiseLite().gen_from_coords(np.zeros((3, 4), np.float32)).shape == (4,)\""
-# No numpy wheels for armv7l, so building it under QEMU would take hours
+# One cp311-abi3 wheel per platform; cibuildwheel reuses it for the later
+# versions and only runs the tests there.
+build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*"]
+skip = ["*-win32", "*-manylinux_i686", "*-musllinux_i686"]
+test-groups = ["test"]
+test-command = "pytest {project}/tests"
+# No numpy wheels for armv7l, so installing it under QEMU would take hours
 test-skip = "*armv7l*"
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "setup.py" },
+    { dir = "src" },
+    { dir = "ext" },
+]

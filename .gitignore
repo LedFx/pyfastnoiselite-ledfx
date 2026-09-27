@@ -1,4 +1,3 @@
-venv
 *.pyd
 *.o
 *.so
@@ -6,4 +5,7 @@ venv
 *.egg
 dist
 build
+wheelhouse
+.venv
 .vscode
+src/pyfastnoiselite/*.cpp

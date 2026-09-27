@@ -1,24 +1,32 @@
-[![Build Status](https://travis-ci.org/tizilogic/PyFastNoiseLite.svg?branch=master)](https://travis-ci.org/tizilogic/PyFastNoiseLite)
+# pyfastnoiselite-ledfx
+> **Note:** This is a fork of the original [PyFastNoiseLite](https://github.com/tizilogic/PyFastNoiseLite) maintained by the [LedFx](https://github.com/LedFx) team.
+>
+> **Why this fork exists:**
+> - The original project is sporadically active, and its 0.0.7 release has no Python 3.14 wheels and no sdist on PyPI
+> - We build against the CPython stable ABI, so one wheel per platform covers Python 3.11 and every later release
+> - We ship armv7l wheels for 32-bit Raspberry Pi OS
+> - LedFx depends on pyfastnoiselite and needs a reliable, up-to-date release
+>
+> All credit for pyfastnoiselite goes to Tiziano Bettio, and for FastNoise Lite to Jordan Peck (Auburn). This fork exists solely to provide maintained releases for projects that depend on it. The build changes are offered upstream in [tizilogic/PyFastNoiseLite#3](https://github.com/tizilogic/PyFastNoiseLite/pull/3).
+>
+> **Original project:** https://github.com/tizilogic/PyFastNoiseLite  
+> **This fork:** https://github.com/LedFx/pyfastnoiselite-ledfx
 
-# Cython wrapper for the [FastNoise Lite](https://github.com/Auburn/FastNoise/) library
+[![image](https://img.shields.io/pypi/v/pyfastnoiselite-ledfx.svg)](https://pypi.org/p/pyfastnoiselite-ledfx)[![image](https://img.shields.io/pypi/l/pyfastnoiselite-ledfx.svg)](https://pypi.org/p/pyfastnoiselite-ledfx)[![image](https://img.shields.io/pypi/wheel/pyfastnoiselite-ledfx.svg)](https://pypi.org/p/pyfastnoiselite-ledfx)[![image](https://img.shields.io/pypi/pyversions/pyfastnoiselite-ledfx.svg)](https://pypi.org/p/pyfastnoiselite-ledfx)
 
-This wraps Auburns' great [FastNoise Lite](https://github.com/Auburn/FastNoise/)
-library using Cython  for use in Python 3.6+
+A Cython wrapper for Auburn's [FastNoise Lite](https://github.com/Auburn/FastNoiseLite) noise generation library.
 
 ## Installation
 
-This package is available on the [Python Package Index](https://pypi.org) both
-as source and binary distribution for a variety of Python versions and
-platforms using the following command:
-
 ```bash
-pip install pyfastnoiselite  # On some systems, "pip" has to be replaced by "pip3"
+pip install pyfastnoiselite-ledfx
 ```
 
-> __Note__:
->
-> This wrapper currently lacks the domain warping functionality and
-> documentation. Both are planned to be added in the future.
+Binary wheels are published for CPython 3.11+ on Windows (x86_64), macOS (x86_64, arm64) and Linux glibc/musl (x86_64, aarch64, armv7l). Building from the sdist needs a C++11 compiler.
+
+The distribution is renamed but the import name is unchanged, so it is a drop-in replacement for `pyfastnoiselite`. Don't install both: they provide the same module.
+
+> **Note:** This wrapper lacks the domain warping functionality.
 
 ## Usage
 
@@ -31,11 +39,11 @@ noise = FastNoiseLite(seed=1337)
 noise.noise_type = NoiseType.NoiseType_OpenSimplex2S
 
 # Get 2D noise
-print(noise.get_noise(34, 22)) # 0.7130074501037598
-print(noise.get_noise(100, 110)) # -0.614801287651062
+print(noise.get_noise(34, 22))  # 0.7130074501037598
+print(noise.get_noise(100, 110))  # -0.3495847284793854
 
 # Get 3D noise
-print(noise.get_noise(95, 100, 30)) # -0.45421651005744934
+print(noise.get_noise(95, 100, 30))  # -0.4522402286529541
 
 
 import numpy as np
@@ -45,5 +53,11 @@ Ys = [4, 13, 100]
 Zs = [0, -4, 30]
 coords = np.array([Xs, Ys, Zs], dtype=np.float32)
 # Generate noise for each coordinate
-print(noise.gen_from_coords(coords)) # [0.11303097 -0.5841235  -0.45224023]
+print(noise.gen_from_coords(coords))
 ```
+
+For many points, `gen_from_coords` is much faster than calling `get_noise` in a Python loop. It takes a `float32` array of shape `(2, N)` or `(3, N)`.
+
+## License
+
+This project is licensed under the [MIT license](LICENSE). FastNoise Lite is also MIT licensed.
