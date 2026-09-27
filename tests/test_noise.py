@@ -1,9 +1,15 @@
 """Output must match upstream pyfastnoiselite 0.0.7 (the cp313 wheel on PyPI).
 
 LedFx effects depend on the exact noise field, so a build or FastNoiseLite
-change that shifts these values is a visible change, not a refactor. The
-tolerance only absorbs compiler differences such as FMA contraction.
+change that shifts these values is a visible change, not a refactor.
+
+The tolerance absorbs compiler differences only: GCC on aarch64 fuses
+multiply-adds and lands up to ~5e-6 away from these x86_64 values, as
+upstream's own aarch64 wheel does. That is far below one 8-bit LED step
+(~4e-3); a real algorithm change moves values by orders of magnitude more.
 """
+
+ATOL = 1e-5
 
 import numpy as np
 import pytest
@@ -57,13 +63,13 @@ def opensimplex2(frequency, fbm=False):
 def test_gen_from_coords_matches_upstream(noise, coords, expected):
     result = noise.gen_from_coords(np.array(coords, dtype=np.float32))
     assert result.dtype == np.float32
-    np.testing.assert_allclose(result, expected, rtol=0, atol=1e-6)
+    np.testing.assert_allclose(result, expected, rtol=0, atol=ATOL)
 
 
 def test_get_noise_matches_upstream():
     noise = FastNoiseLite(seed=1337)
     noise.noise_type = NoiseType.NoiseType_OpenSimplex2S
-    assert noise.get_noise(34, 22) == pytest.approx(0.7130074501037598, abs=1e-6)
-    assert noise.get_noise(100, 110) == pytest.approx(-0.3495847284793854, abs=1e-6)
-    assert noise.get_noise(95, 100, 30) == pytest.approx(-0.4522402286529541, abs=1e-6)
+    assert noise.get_noise(34, 22) == pytest.approx(0.7130074501037598, abs=ATOL)
+    assert noise.get_noise(100, 110) == pytest.approx(-0.3495847284793854, abs=ATOL)
+    assert noise.get_noise(95, 100, 30) == pytest.approx(-0.4522402286529541, abs=ATOL)
 

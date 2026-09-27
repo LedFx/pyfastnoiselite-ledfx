@@ -46,6 +46,7 @@ jobs:
         with:
           persist-credentials: false
           submodules: true
+          fetch-depth: 0 # setuptools-scm needs tags for the version
 
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
         if: matrix.arch == 'armv7l'
