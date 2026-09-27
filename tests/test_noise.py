@@ -128,3 +128,22 @@ def test_version_matches_distribution():
     import pyfastnoiselite.pyfastnoiselite as module
 
     assert module.__version__ == version("pyfastnoiselite-ledfx")
+
+
+def test_imports_without_package_metadata():
+    # PyInstaller bundles (LedFx's Windows and macOS builds) have no
+    # dist-info unless the spec copies it; the import must still work.
+    import subprocess
+    import sys
+
+    code = (
+        "import importlib.metadata as md\n"
+        "def missing(name): raise md.PackageNotFoundError(name)\n"
+        "md.version = missing\n"
+        "import pyfastnoiselite.pyfastnoiselite as m\n"
+        "print(m.__version__)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    )
+    assert result.stdout.strip() == "unknown"

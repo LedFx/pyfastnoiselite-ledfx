@@ -5,7 +5,7 @@ Provides the wrapped FastNoiseLite C++ class for use in Python.
 """
 
 from enum import Enum
-from importlib.metadata import version as _dist_version
+from importlib.metadata import PackageNotFoundError, version as _dist_version
 
 import numpy as np
 
@@ -23,7 +23,11 @@ from .cppfastnoiselite cimport FastNoiseLitePy as _FNL
 
 __author__ = 'Tiziano Bettio'
 __license__ = 'MIT'
-__version__ = _dist_version('pyfastnoiselite-ledfx')
+try:
+    __version__ = _dist_version('pyfastnoiselite-ledfx')
+except PackageNotFoundError:
+    # Frozen apps (PyInstaller) don't ship package metadata unless told to
+    __version__ = 'unknown'
 __copyright__ = """Copyright (c) 2021 Tiziano Bettio
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
