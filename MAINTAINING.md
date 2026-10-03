@@ -121,7 +121,9 @@ These live in GitHub, not in this repo. Renovate's automerge relies on them:
 
 ## Supported versions
 
-CPython 3.11+ and NumPy >= 1.23.2. When a CPython version reaches end of life,
+CPython 3.11+ and NumPy >= 1.23.2. CI tests the abi3 wheels on CPython
+3.11 through 3.15 (including the 3.15 release candidates). When a CPython
+version reaches end of life,
 drop it from `[tool.cibuildwheel] build`. When 3.11 goes, raise
 `requires-python`, `Py_LIMITED_API` in `setup.py` and the `py_limited_api` tag
 together. Also raise the NumPy floor to the first release with wheels for the
