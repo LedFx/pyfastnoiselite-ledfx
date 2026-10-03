@@ -14,7 +14,7 @@ submodule `ext/FastNoise`.
 | Upstream fork | Renovate bumps the marker below when `tizilogic/PyFastNoiseLite` moves. The PR is the prompt to review upstream. | Maintainer reviews |
 | New Python releases | Nothing to rebuild: the `cp311-abi3` wheels already install on new CPython versions. Add the version to `[tool.cibuildwheel] build` so CI tests it. | Maintainer |
 | New NumPy releases | Weekly scheduled CI builds and tests every wheel against the newest NumPy. | Whoever sees the red run |
-| Workflow security | zizmor on every change to `.github/` and weekly. | CI |
+| Workflow security and lint | Shared prek hooks (including actionlint and zizmor) before builds; standalone zizmor also runs weekly. | CI and autofix.ci |
 
 ## Output must not drift
 
@@ -48,9 +48,47 @@ LedFx can go back to depending on `pyfastnoiselite`, and this fork can be archiv
 
 ## Releasing
 
-Tag `vX.Y.Z` on `main`. setuptools-scm takes the version from the tag. CI
-builds the wheels and the sdist, then publishes to PyPI through trusted
-publishing from the `pypi` environment, with attestations.
+Squash-merge PRs using Conventional Commit titles. `fix:` and `perf:` trigger
+patch releases; `feat:` triggers a minor release. A breaking change (`!`)
+before 1.0 bumps the minor version. `chore:`, `ci:` and `docs:` alone do not
+trigger a release. For a FastNoise Lite update that needs its own release,
+use a `fix(deps):` title after reviewing the header changes and golden tests.
+
+release-please maintains a release PR with `CHANGELOG.md`, `version.txt` and
+`.release-please-manifest.json`. It starts from the existing `v0.0.8` tag.
+The `simple` strategy manages release bookkeeping; setuptools-scm still derives
+the actual package version from Git tags, so no static Python version is added.
+
+Merging that PR creates a `vX.Y.Z` tag and a draft GitHub release using the
+LedFx automation app. Its token lets the tag trigger `build.yml` (a tag made
+with `GITHUB_TOKEN` would not trigger another workflow). The tag must point to
+a commit on `main` and match both version files. CI runs lint, builds and tests
+the wheels and sdist, then publishes to PyPI through trusted publishing from
+the `pypi` environment, with attestations. Only after PyPI succeeds does CI
+attach the distributions to the draft and publish the GitHub release.
+Re-run failed jobs to retry a release.
+
+All source builds check out the exact `ext/FastNoise` gitlink recorded in the
+release commit, never upstream HEAD. `setup.py` and the Cython declarations
+compile against `ext/FastNoise/Cpp/FastNoiseLite.h`; `MANIFEST.in` includes that
+header and its license in the sdist. CI builds a wheel from the sdist and tests
+it using the tests shipped in that sdist. Users installing a wheel need no
+submodule; users building the sdist need a C++11 compiler but no Git checkout.
+
+## Local checks
+
+```sh
+git submodule update --init
+uvx prek==0.5.3 run --all-files
+uv build
+uv venv
+uv pip install dist/*.whl --group test
+uv run --no-project pytest tests
+```
+
+The hook set matches CI and the shared LedFx autofix workflow. Upstream
+submodule files are excluded from linting. Lint failures prevent expensive
+wheel builds; the notification workflow uses trusted default-branch code only.
 
 ## Repository settings
 
@@ -58,8 +96,19 @@ These live in GitHub, not in this repo. Renovate's automerge relies on them:
 
 - Ruleset `main`: changes go through PRs (no approval needed), no force pushes
   or deletion, and these checks must pass (from GitHub Actions only): the six
-  wheel builds, the sdist build, the oldest-NumPy test and zizmor. Repo admins
-  can bypass it on a PR. Rename a job and you must update the ruleset too.
+  wheel builds, the sdist build, the oldest-NumPy test, zizmor and `CI passed`. Repo admins
+  can bypass it on a PR. These names are preserved for compatibility. After
+  the workflows land, also require `Conventional PR title` (its
+  `pull_request_target` workflow only becomes available on the default branch).
+  The existing individual checks can then be replaced by the two stable gates. This
+  settings migration is separate from the workflow files.
+- Squash-merge PRs with their title as the commit subject so release-please
+  sees the checked Conventional Commit title.
+- The LedFx automation app is installed for all org repositories with contents,
+  pull requests and issues write permissions. The org secrets
+  `AUTOMATION_APP_CLIENT_ID` and `AUTOMATION_APP_PRIVATE_KEY` are available to
+  all repositories; the workflows request only the permissions each needs.
+- The autofix.ci app is installed for all org repositories to push lint fixes.
 - `pypi` environment: deploys from `v*` tags only.
 - Actions: workflow token is read-only by default and can't approve PRs.
 - Security: Dependabot alerts are on, so Renovate can read them and raise
