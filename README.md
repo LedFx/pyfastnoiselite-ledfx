@@ -9,7 +9,7 @@
 >
 > All credit for pyfastnoiselite goes to Tiziano Bettio, and for FastNoise Lite to Jordan Peck (Auburn). This fork exists solely to provide maintained releases for projects that depend on it. The build changes are offered upstream in [tizilogic/PyFastNoiseLite#3](https://github.com/tizilogic/PyFastNoiseLite/pull/3).
 >
-> **Original project:** https://github.com/tizilogic/PyFastNoiseLite  
+> **Original project:** https://github.com/tizilogic/PyFastNoiseLite\
 > **This fork:** https://github.com/LedFx/pyfastnoiselite-ledfx
 
 [![image](https://img.shields.io/pypi/v/pyfastnoiselite-ledfx.svg)](https://pypi.org/p/pyfastnoiselite-ledfx)[![image](https://img.shields.io/pypi/l/pyfastnoiselite-ledfx.svg)](https://pypi.org/p/pyfastnoiselite-ledfx)[![image](https://img.shields.io/pypi/wheel/pyfastnoiselite-ledfx.svg)](https://pypi.org/p/pyfastnoiselite-ledfx)[![image](https://img.shields.io/pypi/pyversions/pyfastnoiselite-ledfx.svg)](https://pypi.org/p/pyfastnoiselite-ledfx)

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "include-component-in-tag": false,
+  "bump-minor-pre-major": true,
+  "draft": true,
+  "force-tag-creation": true,
+  "bootstrap-sha": "acf708d6915f649d8b26a3345e00eb0396d90d31",
+  "packages": {
+    ".": {
+      "package-name": "pyfastnoiselite-ledfx",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}

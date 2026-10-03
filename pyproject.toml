@@ -59,3 +59,7 @@ cache-keys = [
     { dir = "src" },
     { dir = "ext" },
 ]
+
+[tool.ruff.lint]
+# Catch Python errors without reformatting inherited upstream code.
+select = ["F"]
