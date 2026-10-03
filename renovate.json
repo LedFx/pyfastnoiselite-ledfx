@@ -3,6 +3,7 @@
   "extends": [
     "github>LedFx/renovate-config"
   ],
+  "forkProcessing": "enabled",
   "git-submodules": {
     "enabled": true
   },
