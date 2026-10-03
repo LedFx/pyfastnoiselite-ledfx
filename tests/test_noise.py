@@ -101,10 +101,11 @@ def test_rejects_enum_of_the_wrong_type():
     assert noise.noise_type is NoiseType.NoiseType_OpenSimplex2
 
 
-@pytest.mark.parametrize("count", [10, 5000], ids=["with-gil", "without-gil"])
-def test_batch_matches_single_points(count):
+@pytest.mark.parametrize("dimensions", [2, 3])
+@pytest.mark.parametrize("count", [0, 10, 1023, 1024, 5000])
+def test_batch_matches_single_points(dimensions, count):
     rng = np.random.default_rng(count)
-    coords = (rng.random((3, count)) * 200 - 100).astype(np.float32)
+    coords = (rng.random((dimensions, count)) * 200 - 100).astype(np.float32)
     noise = opensimplex2(0.6, fbm=True)
     single = [noise.get_noise(*map(float, point)) for point in coords.T]
     np.testing.assert_array_equal(noise.gen_from_coords(coords), np.float32(single))
@@ -147,3 +148,16 @@ def test_imports_without_package_metadata():
         [sys.executable, "-c", code], capture_output=True, text=True, check=True
     )
     assert result.stdout.strip() == "unknown"
+
+
+@pytest.mark.parametrize("dimensions", [2, 3])
+@pytest.mark.parametrize("count", [10, 2048])
+def test_reversed_strided_coords_match_single_points(dimensions, count):
+    rng = np.random.default_rng(42)
+    coords = (rng.random((dimensions, count * 2)) * 200 - 100).astype(np.float32)
+    # Negative strides on both axes, with every other coordinate selected.
+    coords = coords[::-1, ::-2]
+    coords.setflags(write=False)
+    noise = opensimplex2(0.6, fbm=True)
+    expected = np.array([noise.get_noise(*map(float, p)) for p in coords.T], dtype=np.float32)
+    np.testing.assert_array_equal(noise.gen_from_coords(coords), expected)

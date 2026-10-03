@@ -117,6 +117,9 @@ jobs:
       - name: Build sdist and a wheel from it
         run: uv build
 
+      - name: Check distribution metadata and README rendering
+        run: uvx twine check --strict dist/*
+
       - name: Test the wheel built from the sdist
         run: |
           uv venv
