@@ -95,13 +95,9 @@ wheel builds; the notification workflow uses trusted default-branch code only.
 These live in GitHub, not in this repo. Renovate's automerge relies on them:
 
 - Ruleset `main`: changes go through PRs (no approval needed), no force pushes
-  or deletion, and these checks must pass (from GitHub Actions only): the six
-  wheel builds, the sdist build, the oldest-NumPy test, zizmor and `CI passed`. Repo admins
-  can bypass it on a PR. These names are preserved for compatibility. After
-  the workflows land, also require `Conventional PR title` (its
-  `pull_request_target` workflow only becomes available on the default branch).
-  The existing individual checks can then be replaced by the two stable gates. This
-  settings migration is separate from the workflow files.
+  or deletion. `CI passed` and `Conventional PR title` are required from GitHub
+  Actions. The existing six wheel builds, sdist build, oldest-NumPy test and
+  zizmor checks remain required too. Repo admins can bypass it on a PR.
 - Squash-merge PRs with their title as the commit subject so release-please
   sees the checked Conventional Commit title.
 - The LedFx automation app is installed for all org repositories with contents,
