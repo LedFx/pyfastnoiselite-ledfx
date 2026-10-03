@@ -96,18 +96,19 @@ These live in GitHub, not in this repo. Renovate's automerge relies on them:
 
 - Ruleset `main`: changes go through PRs (no approval needed), no force pushes
   or deletion, and these checks must pass (from GitHub Actions only): the six
-  wheel builds, the sdist build, the oldest-NumPy test and zizmor. Repo admins
+  wheel builds, the sdist build, the oldest-NumPy test, zizmor and `CI passed`. Repo admins
   can bypass it on a PR. These names are preserved for compatibility. After
-  the workflows land, require `CI passed` and `Conventional PR title` as the
-  stable gates (the existing individual checks can then be removed). This
+  the workflows land, also require `Conventional PR title` (its
+  `pull_request_target` workflow only becomes available on the default branch).
+  The existing individual checks can then be replaced by the two stable gates. This
   settings migration is separate from the workflow files.
 - Squash-merge PRs with their title as the commit subject so release-please
   sees the checked Conventional Commit title.
-- The LedFx automation app must be installed on this repository with contents,
+- The LedFx automation app is installed for all org repositories with contents,
   pull requests and issues write permissions. The org secrets
   `AUTOMATION_APP_CLIENT_ID` and `AUTOMATION_APP_PRIVATE_KEY` are available to
   all repositories; the workflows request only the permissions each needs.
-- Enable the autofix.ci app for this repository to push automated lint fixes.
+- The autofix.ci app is installed for all org repositories to push lint fixes.
 - `pypi` environment: deploys from `v*` tags only.
 - Actions: workflow token is read-only by default and can't approve PRs.
 - Security: Dependabot alerts are on, so Renovate can read them and raise
