@@ -49,8 +49,10 @@ jobs:
           RUN_ID: ${{ github.event.workflow_run.id }}
           REPO: ${{ github.repository }}
         run: |
-          lint="$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
+          lint="$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" --paginate \
             --jq '.jobs[] | select(.name == "Lint (prek)") | {id, conclusion} | tostring')"
+          # A cancelled/early-failed run may have no lint job. Keep valid JSON.
+          lint=${lint:-'{"conclusion":"missing"}'}
           echo "lint=$lint" >> "$GITHUB_OUTPUT"
           echo "lint job: $lint"
 
@@ -62,6 +64,7 @@ jobs:
           echo "Lint (prek) did not fail (conclusion: $(echo "$LINT" | jq -r .conclusion)); nothing to report."
 
       - name: Link the PR to this run
+        if: fromJSON(steps.lint.outputs.lint).conclusion == 'failure'
         id: pr
         env:
           GH_TOKEN: ${{ github.token }}
@@ -108,6 +111,7 @@ jobs:
         id: gate
         if: >-
           fromJSON(steps.lint.outputs.lint).conclusion == 'failure' &&
+          steps.pr.outputs.number != '' &&
           steps.autofix.outputs.count == '0'
         env:
           GH_TOKEN: ${{ github.token }}

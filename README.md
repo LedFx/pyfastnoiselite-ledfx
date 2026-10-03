@@ -24,6 +24,11 @@ pip install pyfastnoiselite-ledfx
 
 Binary wheels are published for CPython 3.11+ on Windows (x86_64), macOS (x86_64, arm64) and Linux glibc/musl (x86_64, aarch64, armv7l). Building from the sdist needs a C++11 compiler.
 
+The abi3 wheels target standard (GIL-enabled) CPython. Free-threaded Python
+requires a separate source build. On 32-bit Raspberry Pi OS, NumPy may also
+need a distribution-provided package or a source build because PyPI does not
+provide NumPy ARMv7 wheels.
+
 The distribution is renamed but the import name is unchanged, so it is a drop-in replacement for `pyfastnoiselite`. Don't install both: they provide the same module.
 
 > **Note:** This wrapper lacks the domain warping functionality.
