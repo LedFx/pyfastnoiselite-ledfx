@@ -18,6 +18,25 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  plan:
+    name: Plan native wheels
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.wheels.outputs.matrix }}
+      wheel-plan: ${{ steps.wheels.outputs.wheel-plan }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: false
+      - id: wheels
+        uses: LedFx/release-ci/actions/plan@c4a56af516e431cbdb18519889fd0ffa7166f217 # v0.3.0
+
   lint:
     name: Lint (prek)
     runs-on: ubuntu-latest
@@ -36,30 +55,15 @@ jobs:
         run: python3 ci/test_shared_release.py
 
   build_wheels:
-    needs: lint
+    needs: [plan, lint]
     timeout-minutes: 120
-    name: Build wheels on ${{ matrix.os }} ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
+    name: Build wheels on ${{ matrix.runner }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            arch: x86_64
-          # Native ARM64 runner, no QEMU
-          - os: ubuntu-24.04-arm
-            arch: aarch64
-          # 32-bit Raspberry Pi OS, emulated
-          - os: ubuntu-latest
-            arch: armv7l
-          - os: windows-latest
-            arch: AMD64
-          - os: macos-15-intel
-            arch: x86_64
-          - os: macos-latest
-            arch: arm64
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -72,16 +76,22 @@ jobs:
         with:
           platforms: arm
 
-      - name: Build wheels
-        uses: pypa/cibuildwheel@e090b81e30c4d855ea63bf4b6e59204c09a101ae # v4.2.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          extras: uv
+          enable-cache: false
+      - name: Build and test wheels
+        shell: bash
         env:
-          CIBW_ARCHS: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
+          ARCH: ${{ matrix.arch }}
+        run: >-
+          uv run --frozen --only-group wheel-build python -m cibuildwheel .
+          --config-file pyproject.toml --platform "$PLATFORM" --archs "$ARCH"
+          --output-dir wheelhouse
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cibw-wheels-${{ matrix.os }}-${{ matrix.arch }}
+          name: cibw-wheels-${{ matrix.runner }}-${{ matrix.arch }}
           path: ./wheelhouse/*.whl
           if-no-files-found: error
 
@@ -172,7 +182,7 @@ jobs:
   ci-passed:
     name: CI passed
     if: always()
-    needs: [lint, build_wheels, build_sdist, numpy_oldest]
+    needs: [plan, lint, build_wheels, build_sdist, numpy_oldest]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
@@ -187,7 +197,7 @@ jobs:
 
   publish-release:
     name: Publish verified package release
-    needs: [ci-passed]
+    needs: [plan, ci-passed]
     if: github.repository == 'LedFx/pyfastnoiselite-ledfx' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.ci-passed.result == 'success'
     environment:
       name: pypi
@@ -211,7 +221,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-          sparse-checkout: .github
+          sparse-checkout: |
+            .github
+            pyproject.toml
+          sparse-checkout-cone-mode: false
           path: release-tools
       - name: Mint scoped publication token
         id: release-token
@@ -227,12 +240,13 @@ jobs:
         id: prepare
         env:
           GH_TOKEN: ${{ steps.release-token.outputs.token }}
-        uses: LedFx/release-ci/actions/release@5e683ef142d08c81e46164062cff23aa1091d3f1 # v0.2.0
+        uses: LedFx/release-ci/actions/release@c4a56af516e431cbdb18519889fd0ffa7166f217 # v0.3.0
         with:
           phase: prepare
-          policy: release-tools/.github/release-policy.json
+          project: release-tools
           dist: dist
           snapshot: ${{ runner.temp }}/release-snapshot.json
+          wheel-plan: ${{ needs.plan.outputs.wheel-plan }}
       - name: Attest the tested distributions
         id: provenance
         if: steps.prepare.outputs.already_published != 'true'
@@ -245,12 +259,13 @@ jobs:
         id: upload
         env:
           GH_TOKEN: ${{ steps.release-token.outputs.token }}
-        uses: LedFx/release-ci/actions/release@5e683ef142d08c81e46164062cff23aa1091d3f1 # v0.2.0
+        uses: LedFx/release-ci/actions/release@c4a56af516e431cbdb18519889fd0ffa7166f217 # v0.3.0
         with:
           phase: check-upload
-          policy: release-tools/.github/release-policy.json
+          project: release-tools
           dist: dist
           snapshot: ${{ runner.temp }}/release-snapshot.json
+          wheel-plan: ${{ needs.plan.outputs.wheel-plan }}
       - name: Publish matching missing Python distributions
         if: steps.upload.outputs.pypi_upload == 'true'
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
@@ -259,12 +274,13 @@ jobs:
       - name: Verify provenance and finalize existing GitHub draft
         env:
           GH_TOKEN: ${{ steps.release-token.outputs.token }}
-        uses: LedFx/release-ci/actions/release@5e683ef142d08c81e46164062cff23aa1091d3f1 # v0.2.0
+        uses: LedFx/release-ci/actions/release@c4a56af516e431cbdb18519889fd0ffa7166f217 # v0.3.0
         with:
           phase: finalize
-          policy: release-tools/.github/release-policy.json
+          project: release-tools
           dist: dist
           snapshot: ${{ runner.temp }}/release-snapshot.json
+          wheel-plan: ${{ needs.plan.outputs.wheel-plan }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always() && steps.prepare.outcome == 'success'
         with:

@@ -1,6 +1,6 @@
 """Consumer authority remains explicit around the pinned shared transaction."""
 
-import json
+import tomllib
 import re
 from pathlib import Path
 
@@ -11,7 +11,7 @@ def test_release_workflow_preserves_identity_gates_and_same_run_artifacts() -> N
     workflow = (ROOT / ".github/workflows/build.yml").read_text()
     job = workflow.split("\n  publish-release:\n", 1)[1]
     for required in (
-        "needs: [ci-passed]",
+        "needs: [plan, ci-passed]",
         "github.repository == 'LedFx/pyfastnoiselite-ledfx'",
         "github.event_name == 'push'",
         "startsWith(github.ref, 'refs/tags/v')",
@@ -33,7 +33,20 @@ def test_release_workflow_preserves_identity_gates_and_same_run_artifacts() -> N
     )
     assert len(pins) == 3 and len(set(pins)) == 1
     assert job.count("uses: LedFx/release-ci/actions/release@") == 3
-    assert job.count("policy: release-tools/.github/release-policy.json") == 3
+    assert job.count("project: release-tools") == 3
+    assert job.count("wheel-plan: ${{ needs.plan.outputs.wheel-plan }}") == 3
+    planning = re.findall(
+        r"uses: LedFx/release-ci/actions/plan@([0-9a-f]{40}) # (v[0-9]+\.[0-9]+\.[0-9]+)\s*$",
+        workflow,
+        re.MULTILINE,
+    )
+    assert planning == [pins[0]]
+    assert "sparse-checkout-cone-mode: false" in job
+    assert "pyproject.toml" in job
+    assert "policy:" not in workflow
+    assert "uv run --frozen --only-group wheel-build python -m cibuildwheel ." in workflow
+    assert '--config-file pyproject.toml --platform "$PLATFORM" --archs "$ARCH"' in workflow
+    assert "uses: pypa/cibuildwheel@" not in workflow
     assert (
         job.index("phase: prepare")
         < job.index("uses: actions/attest@")
@@ -45,22 +58,25 @@ def test_release_workflow_preserves_identity_gates_and_same_run_artifacts() -> N
     assert "softprops" not in workflow and "--clobber" not in workflow
 
 
-def test_explicit_policy_keeps_abi3_portable_artifacts() -> None:
-    policy = json.loads((ROOT / ".github/release-policy.json").read_text())
-    assert policy["repository"] == "LedFx/pyfastnoiselite-ledfx"
-    assert policy["workflow"] == ".github/workflows/build.yml"
-    assert policy["python"]["project"] == "pyfastnoiselite-ledfx"
-    tags = policy["python"]["wheel_tags"]
-    assert len(tags) == len(set(tags)) == 9
-    assert all(tag.startswith("cp311-abi3-") for tag in tags)
-    assert any("musllinux" in tag for tag in tags)
-    assert any("armv7l" in tag for tag in tags)
-    assert policy["python"]["sdist"] == "pyfastnoiselite_ledfx-{version}.tar.gz"
-    assert policy["github_assets"] == {"distributions": True, "files": []}
-    assert policy["oci"] == []
+def test_pyproject_keeps_native_portable_matrix() -> None:
+    config = tomllib.loads((ROOT / "pyproject.toml").read_text())
+    rows = config["tool"]["release-ci"]["targets"]
+    assert rows and len({(row["platform"], row["arch"]) for row in rows}) == len(rows)
+    assert all({"runner", "platform", "arch"} <= set(row) for row in rows)
+    dependencies = config["dependency-groups"]["wheel-build"]
+    assert len(dependencies) == 1
+    assert re.fullmatch(r"cibuildwheel(?:\[uv\])?==[0-9]+\.[0-9]+\.[0-9]+", dependencies[0])
+    assert config["project"]["name"] == "pyfastnoiselite-ledfx"
+    assert set(config["tool"]["release-ci"]) == {"targets"}
+    assert not (ROOT / ".github/release-policy.json").exists()
+    workflow = (ROOT / ".github/workflows/build.yml").read_text()
+    assert "if: matrix.arch == 'armv7l'" in workflow
+    assert "platforms: arm" in workflow
+    assert "path: dist/*.tar.gz" in workflow
+    assert any(row["arch"] == "armv7l" for row in rows)
 
 
 if __name__ == "__main__":
     test_release_workflow_preserves_identity_gates_and_same_run_artifacts()
-    test_explicit_policy_keeps_abi3_portable_artifacts()
+    test_pyproject_keeps_native_portable_matrix()
     print("2 shared publication contracts passed")

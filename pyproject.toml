@@ -34,6 +34,7 @@ Issues = "https://github.com/LedFx/pyfastnoiselite-ledfx/issues"
 Upstream = "https://github.com/tizilogic/PyFastNoiseLite"
 
 [dependency-groups]
+wheel-build = ["cibuildwheel[uv]==4.2.1"]
 test = ["pytest"]
 
 [tool.setuptools.packages.find]
@@ -63,3 +64,34 @@ cache-keys = [
 [tool.ruff.lint]
 # Catch Python errors without reformatting inherited upstream code.
 select = ["F"]
+
+
+[[tool.release-ci.targets]]
+platform = "linux"
+arch = "x86_64"
+runner = "ubuntu-latest"
+
+[[tool.release-ci.targets]]
+platform = "linux"
+arch = "aarch64"
+runner = "ubuntu-24.04-arm"
+
+[[tool.release-ci.targets]]
+platform = "linux"
+arch = "armv7l"
+runner = "ubuntu-latest"
+
+[[tool.release-ci.targets]]
+platform = "windows"
+arch = "AMD64"
+runner = "windows-latest"
+
+[[tool.release-ci.targets]]
+platform = "macos"
+arch = "x86_64"
+runner = "macos-15-intel"
+
+[[tool.release-ci.targets]]
+platform = "macos"
+arch = "arm64"
+runner = "macos-latest"
