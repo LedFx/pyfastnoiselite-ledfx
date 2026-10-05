@@ -68,3 +68,22 @@ For batches of 1024 points or more, `gen_from_coords` releases the GIL, so separ
 ## License
 
 This project is licensed under the [MIT license](LICENSE). FastNoise Lite is also MIT licensed.
+
+## Release publication
+
+The existing `build.yml`/`pypi` Trusted Publisher identity and native/ABI3 build
+matrix are retained. After all CI gates pass, one queued job downloads the same
+run's `cibw-*` wheels/sdist and calls the SHA-pinned
+[shared release transaction](https://github.com/LedFx/release-ci) with
+`.github/release-policy.json`. Its exact nine-wheel/sdist policy includes
+compressed glibc aliases, musllinux and ARMv7; it does not change build coverage.
+
+The scoped App token and caller OIDC/attestation steps verify archive metadata,
+source/tag identity, SHA-256 and provenance before publishing the existing draft
+last. Matching partial uploads can resume from the original run. Missing drafts
+or conflicting assets now fail instead of creating fallback releases or using
+`--clobber`; release-please must create the draft and preserve its notes. Higher
+stable drafts/releases veto latest promotion, so an abandoned newer draft may
+delay latest without blocking immutable version publication. Keep the retained
+snapshot/bundles and follow the shared recovery guide; do not rebuild the same
+version to replace published bytes. PR/manual runs do not publish.
