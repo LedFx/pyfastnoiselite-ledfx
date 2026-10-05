@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.10](https://github.com/LedFx/pyfastnoiselite-ledfx/compare/v0.0.9...v0.0.10) (2026-10-05)
+
+
+### Bug Fixes
+
+* isolate PyPI upload sidecars from verified distributions ([#12](https://github.com/LedFx/pyfastnoiselite-ledfx/issues/12)) ([7c2c138](https://github.com/LedFx/pyfastnoiselite-ledfx/commit/7c2c138f4898fabf12b8c759a1b8c88130f5a110))
+
 ## [0.0.9](https://github.com/LedFx/pyfastnoiselite-ledfx/compare/v0.0.8...v0.0.9) (2026-10-03)
 
 
