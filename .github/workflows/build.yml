@@ -27,7 +27,7 @@ jobs:
     outputs:
       matrix: ${{ steps.wheels.outputs.matrix }}
       wheel-plan: ${{ steps.wheels.outputs.wheel-plan }}
-      version_only: ${{ steps.version_scope.outputs.version_only }}
+      version_only: ${{ steps.version_scope.outputs.version-only }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,40 +40,13 @@ jobs:
           enable-cache: false
       - id: wheels
         uses: LedFx/release-ci/actions/plan@442e00705d4e5edd589021851e756761363f9d84 # v0.3.1
-      # A release-please PR (version.txt, manifest, changelog) cannot alter
-      # built artifacts. Anything else — source, build config, renovate
-      # dependency or lock bumps — still builds everything.
       - id: version_scope
-        env:
-          EVENT: ${{ github.event_name }}
-          REF: ${{ github.ref }}
-        run: |
-          case "$EVENT" in
-            pull_request) base="origin/main...HEAD" ;;
-            push)
-              if [[ "$REF" == refs/tags/* ]]; then exit 0; fi
-              base="HEAD^"
-              ;;
-            *) exit 0 ;; # schedule and manual runs always build
-          esac
-          export SCOPE_BASE="$base"
-          scope=$(python3 - <<'PY'
-          import os, subprocess
-
-          def git(*args: str) -> str:
-              result = subprocess.run(
-                  ["git", *args], capture_output=True, text=True, timeout=30
-              )
-              return result.stdout if result.returncode == 0 else ""
-
-          files = set(git("diff", "--name-only", os.environ["SCOPE_BASE"], "HEAD").split())
-          # version.txt feeds setuptools-scm: the wheel metadata version comes
-          # from it, so this release type is metadata-only by construction.
-          neutral = {"CHANGELOG.md", ".release-please-manifest.json", "version.txt"}
-          print("true" if files and files <= neutral else "false")
-          PY
-          )
-          echo "version_only=$scope" >> "$GITHUB_OUTPUT"
+        uses: LedFx/release-ci/actions/version-scope@442e00705d4e5edd589021851e756761363f9d84 # v0.3.1
+        with:
+          package-name: pyfastnoiselite-ledfx
+          prose-files: ""
+          simple-version-files: |
+            version.txt
 
   lint:
     name: Lint (prek)
