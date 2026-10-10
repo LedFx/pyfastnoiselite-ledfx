@@ -44,7 +44,6 @@ jobs:
         uses: LedFx/release-ci/actions/version-scope@b7cd7375d72b5f87c20eb0673a9f0ce6ccb930f4 # v0.4.1
         with:
           package-name: pyfastnoiselite-ledfx
-          prose-files: ""
           simple-version-files: |
             version.txt
 
