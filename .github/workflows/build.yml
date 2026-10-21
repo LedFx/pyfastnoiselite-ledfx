@@ -27,15 +27,25 @@ jobs:
     outputs:
       matrix: ${{ steps.wheels.outputs.matrix }}
       wheel-plan: ${{ steps.wheels.outputs.wheel-plan }}
+      version_only: ${{ steps.version_scope.outputs.version-only }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # version-scope diffs PRs against origin/main: merge refs carry no
+          # parents without full history.
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: false
       - id: wheels
         uses: LedFx/release-ci/actions/plan@442e00705d4e5edd589021851e756761363f9d84 # v0.3.1
+      - id: version_scope
+        uses: LedFx/release-ci/actions/version-scope@12ea4ced7288cb6b0f3a8aafbac3e825969c17ca # v0.4.2
+        with:
+          package-name: pyfastnoiselite-ledfx
+          simple-version-files: |
+            version.txt
 
   lint:
     name: Lint (prek)
@@ -56,6 +66,7 @@ jobs:
 
   build_wheels:
     needs: [plan, lint]
+    if: needs.plan.outputs.version_only != 'true'
     timeout-minutes: 120
     name: Build wheels on ${{ matrix.runner }} ${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
@@ -96,7 +107,8 @@ jobs:
           if-no-files-found: error
 
   build_sdist:
-    needs: lint
+    needs: [lint, plan]
+    if: needs.plan.outputs.version_only != 'true'
     timeout-minutes: 30
     name: Build and test source distribution
     runs-on: ubuntu-latest
@@ -149,7 +161,8 @@ jobs:
   # Keep the NumPy floor in pyproject.toml honest: oldest supported Python
   # with the oldest allowed NumPy.
   numpy_oldest:
-    needs: lint
+    needs: [lint, plan]
+    if: needs.plan.outputs.version_only != 'true'
     timeout-minutes: 30
     name: Test oldest supported NumPy
     runs-on: ubuntu-latest
@@ -187,13 +200,19 @@ jobs:
     timeout-minutes: 5
     permissions: {}
     steps:
-      - name: Require every lint, build and test job to succeed
+      # Version-only release bumps legitimately skip the build/test jobs;
+      # anything else must have run and passed.
+      - name: Require native coverage unless the diff is release metadata
+        if: needs.plan.outputs.version_only != 'true'
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |
           for result in $RESULTS; do
             test "$result" = success || exit 1
           done
+      - name: Require lint even for metadata-only changes
+        if: needs.lint.result != 'success'
+        run: exit 1
 
   publish-release:
     name: Publish verified package release
