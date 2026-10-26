@@ -59,7 +59,7 @@ jobs:
           persist-credentials: false
       - uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece # v3.0.0
         with:
-          prek-version: "v0.5.4"
+          prek-version: "v0.5.5"
           extra-args: --all-files
       - name: Shared publication wiring contracts
         run: python3 ci/test_shared_release.py
