@@ -100,7 +100,7 @@ jobs:
           --config-file pyproject.toml --platform "$PLATFORM" --archs "$ARCH"
           --output-dir wheelhouse
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cibw-wheels-${{ matrix.runner }}-${{ matrix.arch }}
           path: ./wheelhouse/*.whl
@@ -152,7 +152,7 @@ jobs:
           tar -xzf dist/*.tar.gz -C sdist --strip-components=1
           uv run --no-project pytest sdist/tests
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cibw-sdist
           path: dist/*.tar.gz
@@ -307,7 +307,7 @@ jobs:
           dist: dist
           snapshot: ${{ runner.temp }}/release-snapshot.json
           wheel-plan: ${{ needs.plan.outputs.wheel-plan }}
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.prepare.outcome == 'success'
         with:
           name: release-provenance-${{ github.ref_name }}-${{ github.run_attempt }}
